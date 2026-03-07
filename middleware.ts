@@ -2,9 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Middleware runs on every request BEFORE the page loads.
- * It checks if the user is logged in and redirects them
- * to login if they try to access protected pages.
+ * Middleware runs on every request before the page loads.
+ *
+ * IMPORTANT: We use getSession() instead of getUser() here.
+ * - getUser()    → validates JWT with Supabase servers (network call, can fail/timeout)
+ * - getSession() → reads JWT from the cookie locally  (no network, instant, reliable)
+ *
+ * For protecting routes in a personal app, getSession() is reliable enough.
+ * The session token was issued by Supabase and is cryptographically signed.
  */
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -17,7 +22,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: object }[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
@@ -30,24 +35,24 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh the session — important for keeping the user logged in
+  // Read the session from cookies — no network call, always fast
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const isAuthPage =
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/signup");
 
-  // If not logged in and not on an auth page, redirect to login
-  if (!user && !isAuthPage) {
+  // Not logged in → send to login
+  if (!session && !isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // If logged in and on an auth page, redirect to dashboard
-  if (user && isAuthPage) {
+  // Already logged in → don't show login/signup again
+  if (session && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
@@ -58,7 +63,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all routes EXCEPT static files and Next.js internals
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -85,7 +85,7 @@ export function ReportView() {
 
       existing.transaction_count += 1;
       existing.total_try += t.try_amount;
-      existing.total_usdt += t.usdt_amount;
+      existing.total_usdt += t.usdt_amount ?? 0;
       existing.total_pkr_cost += t.pkr_cost;
       existing.total_pkr_received += t.pkr_received;
       existing.total_fees += t.total_fees_pkr;

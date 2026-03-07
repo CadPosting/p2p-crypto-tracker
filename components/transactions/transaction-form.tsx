@@ -114,7 +114,7 @@ export function TransactionForm() {
       date: format(new Date(), "yyyy-MM-dd"),
       status: "completed",
       fees: [],
-    } as FormValues,
+    } as unknown as FormValues,
   });
 
   const watched = useWatch({ control });
@@ -143,7 +143,7 @@ export function TransactionForm() {
       date: format(new Date(), "yyyy-MM-dd"),
       status: "completed",
       fees: [],
-    } as FormValues);
+    } as unknown as FormValues);
   }
 
   // ---------- Live calculation ----------
@@ -767,7 +767,7 @@ export function TransactionForm() {
 
           <div className="text-slate-400">Total Fees</div>
           <div className="text-right font-medium text-orange-400">
-            - {formatCurrency(sumFees(watched.fees ?? []), "PKR")}
+            - {formatCurrency(sumFees((watched.fees ?? []).map(f => ({ amount_pkr: f.amount_pkr ?? 0 }))), "PKR")}
           </div>
         </div>
 

@@ -1,15 +1,30 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 
 /**
- * Dashboard layout — provides the sidebar on desktop and a
- * hamburger menu on mobile. All dashboard pages are wrapped in this.
+ * Dashboard layout — wraps all protected pages.
+ *
+ * Double-checks authentication server-side here as well as the middleware.
+ * If for any reason the middleware lets through an unauthenticated request,
+ * this will catch it and redirect to login.
  */
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    redirect("/login");
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Desktop sidebar */}

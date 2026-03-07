@@ -65,7 +65,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                     {formatNumber(t.try_amount, 0)}
                   </td>
                   <td className="py-2.5 pr-4 text-right text-slate-500">
-                    {formatNumber(t.usdt_amount, 2)}
+                    {t.transaction_type === "direct_exchange" ? "—" : formatNumber(t.usdt_amount ?? 0, 2)}
                   </td>
                   <td
                     className={`py-2.5 text-right font-semibold ${profitClass(

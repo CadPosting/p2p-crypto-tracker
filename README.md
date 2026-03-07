@@ -1,29 +1,47 @@
 # P2P Crypto Tracker
 
-A web app to track and calculate profits from TRY/PKR P2P crypto trading via USDT.
+A web app to track and calculate profits from TRY/PKR P2P crypto trading.
 
-## How the trade flow works
+Supports two trade types:
+- **USDT Trade** — TRY → USDT → PKR (3-step conversion via P2P platform)
+- **Direct Exchange** — TRY ↔ PKR directly (profit from spread between buy & sell rate)
 
+---
+
+## Trade Flow Examples
+
+### USDT Trade
 ```
 You receive TRY  →  Buy USDT with TRY (P2P)  →  Sell USDT for PKR (P2P)
-                         ↓                              ↓
-                   TRY/USDT rate                PKR/USDT rate
-                         ↓
-PKR Cost = TRY × (PKR/TRY rate)
-USDT     = TRY / (TRY/USDT rate)
-PKR Recv = USDT × (PKR/USDT rate)
-Net Profit = PKR Recv − PKR Cost − Fees
+
+PKR Cost     = TRY amount × (PKR/TRY rate)
+USDT Amount  = TRY amount / (TRY/USDT rate)
+PKR Received = USDT amount × (PKR/USDT rate)
+Net Profit   = PKR Received − PKR Cost − Fees
 ```
+**Example:** 10,000 TRY @ 6.5 PKR/TRY → 227.27 USDT @ 44 TRY/USDT → 66,704 PKR @ 293.5 PKR/USDT → **1,652 PKR net profit** (after 52 PKR fees)
+
+### Direct Exchange
+```
+You buy TRY at one rate and sell at a higher rate
+
+PKR Cost     = TRY amount × buy rate
+PKR Received = TRY amount × sell rate
+Net Profit   = TRY amount × (sell rate − buy rate) − Fees
+```
+**Example:** 10,000 TRY, buy @ 6.5 PKR/TRY, sell @ 6.8 PKR/TRY → **3,000 PKR gross profit**
+
+---
 
 ## Tech Stack
 
 | Layer | Tool |
 |-------|------|
-| Framework | Next.js 14 (App Router) |
+| Framework | Next.js 15+ (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
 | Database | Supabase (PostgreSQL) |
-| Auth | Supabase Auth |
+| Auth | Supabase Auth (Server Actions) |
 | Charts | Recharts |
 | Forms | React Hook Form + Zod |
 | Export | xlsx |
@@ -31,119 +49,135 @@ Net Profit = PKR Recv − PKR Cost − Fees
 
 ---
 
+## Features
+
+- **Dashboard** — 30-day profit chart, today's profit, stats summary
+- **Transactions** — Two trade modes with live profit calculator, itemised fees, date/account filters, click-to-expand breakdown
+- **Accounts** — Unlimited TRY and PKR bank accounts with balances
+- **Rate Tracker** — Save P2P ad rates (TRY/USDT, PKR/USDT), see estimated margins
+- **Reports** — Daily/monthly summaries with Excel export
+
+---
+
 ## Step-by-Step Setup
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org) v18 or later
+- [Node.js](https://nodejs.org) v18 or later (`node --version` to check)
 - A [GitHub](https://github.com) account
 - A [Supabase](https://supabase.com) account (free)
 - A [Vercel](https://vercel.com) account (free)
 
 ---
 
-### Step 1 — Create a GitHub Repository
+### Step 1 — Install Node.js
 
-1. Go to https://github.com/new
-2. Name it `p2p-crypto-tracker`
-3. Set it to **Private** (recommended — this tracks financial data)
-4. Do NOT initialise with README (we already have one)
-5. Click **Create repository**
+Go to **nodejs.org**, download the **LTS version**, install it. Verify in terminal:
+```bash
+node --version   # v20.x.x or higher
+npm --version
+```
 
-Then in your terminal:
+---
+
+### Step 2 — Install project dependencies
 
 ```bash
 cd /path/to/p2p-crypto-tracker
+npm install
+```
 
-git init
-git add .
-git commit -m "Initial commit: P2P Crypto Tracker V1"
-git branch -M main
+Takes 1–3 minutes. Only needed once.
+
+---
+
+### Step 3 — Create a GitHub Repository
+
+1. Go to **github.com/new**
+2. Name: `p2p-crypto-tracker` | Visibility: **Private** | Do NOT add README
+3. Click **Create repository**
+
+In your terminal:
+```bash
 git remote add origin https://github.com/YOUR_USERNAME/p2p-crypto-tracker.git
 git push -u origin main
 ```
 
----
-
-### Step 2 — Create a Supabase Project
-
-1. Go to https://supabase.com and sign in
-2. Click **New Project**
-3. Choose a name (e.g. `p2p-tracker`) and a strong database password — **save this password somewhere safe**
-4. Select the region closest to you
-5. Wait ~2 minutes for the project to spin up
+> GitHub requires a **Personal Access Token** as your password.
+> Create one at: GitHub → Settings → Developer Settings → Personal Access Tokens → Tokens (classic) → tick `repo` → copy the token.
 
 ---
 
-### Step 3 — Run the Database Migration
+### Step 4 — Create a Supabase Project
 
-1. In your Supabase dashboard, click **SQL Editor** in the left sidebar
-2. Click **New Query**
-3. Open the file `supabase/migrations/001_initial.sql` from this repo
-4. Copy its entire contents and paste into the SQL editor
-5. Click **Run** (the green button)
-6. You should see "Success. No rows returned" — that means it worked!
-
-This creates your 4 tables: `accounts`, `rate_ads`, `transactions`, `transaction_fees`
-and sets up Row Level Security so each user only sees their own data.
+1. Go to **supabase.com** → New Project
+2. Name: `p2p-tracker` | Choose a strong DB password (save it!)
+3. Select nearest region → Create → wait ~2 minutes
 
 ---
 
-### Step 4 — Get Your Supabase API Keys
+### Step 5 — Run the Database Migrations
 
-1. In your Supabase dashboard, go to **Settings → API** (gear icon in sidebar)
-2. Copy:
-   - **Project URL** (looks like `https://abcdef.supabase.co`)
-   - **anon / public key** (a long string starting with `eyJ...`)
+Run **both** SQL files in order via **Supabase dashboard → SQL Editor → New Query**:
+
+**Migration 1** (creates all tables):
+- Open `supabase/migrations/001_initial.sql` → copy all → paste → **Run**
+- Expected result: "Success. No rows returned."
+
+**Migration 2** (adds direct exchange support):
+- New Query → open `supabase/migrations/002_add_direct_exchange.sql` → copy all → paste → **Run**
+- Expected result: "Success. No rows returned."
+
+Verify in **Table Editor** — you should see 4 tables:
+`accounts`, `rate_ads`, `transactions`, `transaction_fees`
 
 ---
 
-### Step 5 — Configure Environment Variables
+### Step 6 — Configure Environment Variables
 
-Copy the example env file and fill in your keys:
+1. Supabase dashboard → **Settings (gear icon) → API**
+2. Copy **Project URL** and **anon/public key**
 
 ```bash
 cp .env.local.example .env.local
+# Open .env.local and fill in:
 ```
 
-Open `.env.local` and fill in:
-
-```
+```env
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 ```
 
-> **IMPORTANT:** Never commit `.env.local` to git. It's already in `.gitignore`.
+> `.env.local` is in `.gitignore` — it will never be pushed to GitHub. This is intentional.
 
 ---
 
-### Step 6 — Install and Run Locally
+### Step 7 — Run Locally
 
 ```bash
-npm install
 npm run dev
 ```
 
-Open http://localhost:3000 in your browser.
+Open **http://localhost:3000**
 
-1. Click **Sign up** to create your account
-2. Check your email and confirm your address (Supabase sends a confirmation)
-3. Sign in and start using the app!
+1. Click **Sign up** → enter email + password → Create account
+2. **Check your email** — click the confirmation link from Supabase
+3. Go back to http://localhost:3000 → **Sign in**
+4. You're in! Start by adding accounts, then record your first trade.
+
+Press `Ctrl + C` to stop the server.
 
 ---
 
-### Step 7 — Deploy to Vercel (Free)
+### Step 8 — Deploy to Vercel (free)
 
-1. Go to https://vercel.com and sign in with GitHub
-2. Click **Add New Project**
-3. Import your `p2p-crypto-tracker` repository
-4. In the **Environment Variables** section, add:
-   - `NEXT_PUBLIC_SUPABASE_URL` → your Supabase URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → your anon key
-5. Click **Deploy**
-6. Vercel gives you a free URL like `https://p2p-crypto-tracker.vercel.app`
+1. **vercel.com** → Add New Project → import `p2p-crypto-tracker` from GitHub
+2. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Click **Deploy** → you get a free URL like `https://p2p-crypto-tracker.vercel.app`
 
-> Every time you `git push` to `main`, Vercel automatically redeploys. No manual steps needed.
+Every `git push origin main` auto-redeploys. No manual steps needed.
 
 ---
 
@@ -151,77 +185,89 @@ Open http://localhost:3000 in your browser.
 
 ```
 p2p-crypto-tracker/
-├── app/                          # Next.js pages
-│   ├── (auth)/                   # Login & signup pages
-│   │   ├── login/page.tsx
-│   │   └── signup/page.tsx
-│   └── (dashboard)/              # Protected pages (require login)
-│       ├── page.tsx              # Dashboard overview
-│       ├── transactions/         # Transaction list & new form
-│       ├── accounts/             # Bank accounts management
+├── app/
+│   ├── (auth)/
+│   │   ├── login/
+│   │   │   ├── actions.ts        # Server Action: handles login server-side
+│   │   │   └── page.tsx
+│   │   └── signup/
+│   │       ├── actions.ts        # Server Action: handles signup server-side
+│   │       └── page.tsx
+│   └── (dashboard)/
+│       ├── page.tsx              # Dashboard overview (server component)
+│       ├── transactions/         # Trade list + new trade form
+│       ├── accounts/             # Bank accounts manager
 │       ├── rates/                # P2P rate ad tracker
-│       └── reports/              # Export reports
+│       └── reports/              # Export daily/monthly reports
 │
-├── components/                   # Reusable React components
+├── components/
 │   ├── layout/                   # Sidebar, mobile nav
-│   ├── dashboard/                # Stats cards, chart
-│   ├── transactions/             # Transaction table & form
-│   ├── accounts/                 # Account cards & form
-│   ├── rates/                    # Rate table & form
-│   └── reports/                  # Report view & export
+│   ├── dashboard/                # Stats cards, profit chart
+│   ├── transactions/             # Transaction table (both trade types) + form
+│   ├── accounts/                 # Account cards + form
+│   ├── rates/                    # Rate table + form
+│   └── reports/                  # Report view + export buttons
 │
 ├── lib/
-│   ├── supabase/                 # Supabase clients
-│   ├── calculations.ts           # Core profit calculation logic
+│   ├── supabase/
+│   │   ├── client.ts             # Browser Supabase client
+│   │   └── server.ts             # Server Supabase client (async, for Next.js 15+)
+│   ├── calculations.ts           # Profit math for both trade types
 │   ├── export.ts                 # Excel/CSV export
 │   └── utils.ts                  # Formatting helpers
 │
-├── types/index.ts                # TypeScript types
-├── middleware.ts                 # Auth protection
-└── supabase/migrations/          # Database SQL
-    └── 001_initial.sql
+├── types/index.ts                # All TypeScript types
+├── middleware.ts                 # Auth protection (redirects to /login if not authenticated)
+└── supabase/migrations/
+    ├── 001_initial.sql           # Creates all tables + Row Level Security
+    └── 002_add_direct_exchange.sql  # Adds direct exchange columns
 ```
-
----
-
-## Features
-
-- **Dashboard** — 30-day profit chart, stats, recent trades
-- **Transactions** — Record trades with live profit calculation, itemised fees, date/account filters
-- **Accounts** — Manage unlimited TRY and PKR bank accounts with balances
-- **Rate Tracker** — Save P2P ad rates, see estimated margins
-- **Reports** — Daily/monthly summaries, export to Excel
 
 ---
 
 ## Understanding the Profit Calculation
 
-Example trade:
-- You receive **10,000 TRY** at **6.5 PKR/TRY** → PKR cost = **65,000 PKR**
-- You buy USDT at **44 TRY/USDT** → you get **≈227.27 USDT**
-- You sell USDT at **293.5 PKR/USDT** → you receive **≈66,704 PKR**
-- Bank fee: **52 PKR**
-- **Net Profit = 66,704 − 65,000 − 52 = 1,652 PKR**
+### USDT Trade
+| Step | Formula | Example |
+|------|---------|---------|
+| PKR Cost | `TRY × PKR/TRY rate` | 10,000 × 6.5 = **65,000 PKR** |
+| USDT Amount | `TRY ÷ TRY/USDT rate` | 10,000 ÷ 44 = **227.27 USDT** |
+| PKR Received | `USDT × PKR/USDT rate` | 227.27 × 293.5 = **66,704 PKR** |
+| Gross Profit | `PKR Received − PKR Cost` | 66,704 − 65,000 = **1,704 PKR** |
+| Net Profit | `Gross − Fees` | 1,704 − 52 = **1,652 PKR** |
+
+### Direct Exchange
+| Step | Formula | Example |
+|------|---------|---------|
+| PKR Cost | `TRY × buy rate` | 10,000 × 6.5 = **65,000 PKR** |
+| PKR Received | `TRY × sell rate` | 10,000 × 6.8 = **68,000 PKR** |
+| Spread | `sell rate − buy rate` | 6.8 − 6.5 = **0.3 PKR/TRY** |
+| Net Profit | `TRY × spread − Fees` | 10,000 × 0.3 = **3,000 PKR** |
 
 ---
 
 ## Common Issues
 
-**"Email not confirmed" error when signing in**
-→ Check your email inbox and click the confirmation link from Supabase.
+**Stuck on login screen after signing in**
+→ Make sure you confirmed your email (check inbox for Supabase confirmation link).
+→ Make sure both SQL migrations were run in Supabase.
 
-**Transactions not showing up**
-→ Make sure you ran the SQL migration (Step 3). Check the Supabase Table Editor to confirm tables exist.
+**"relation does not exist" error**
+→ Run the migrations in Supabase SQL Editor (Step 5 above).
 
-**Page shows blank after deploy**
-→ Double-check the environment variables in Vercel match your Supabase project.
+**Page shows blank after deploy on Vercel**
+→ Check that both environment variables are set in Vercel project settings.
+
+**Email confirmation not arriving**
+→ Check your spam folder. Or in Supabase dashboard → Authentication → Users — you can manually confirm users there.
 
 ---
 
 ## Future Ideas (V2)
 
-- Multiple user roles / team accounts
-- Automatic TRY→PKR rate fetching from an API
-- USDT balance tracking
-- Mobile app (React Native)
-- WhatsApp integration for trade confirmations
+- Multiple user roles / shared team accounts
+- Auto-fetch TRY/PKR exchange rates from an API
+- USDT wallet balance tracking
+- Mobile app (React Native / Expo)
+- WhatsApp notification per trade
+- Monthly profit goal tracking

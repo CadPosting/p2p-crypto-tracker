@@ -10,15 +10,15 @@ import { Plus } from "lucide-react";
 /**
  * Main dashboard page — server component that fetches data from Supabase.
  * Shows stats, profit chart, and recent transactions.
+ *
+ * Note: createClient() is async in Next.js 15+ because cookies() is async.
  */
 export default async function DashboardPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
-  // Calculate date 30 days ago
   const thirtyDaysAgo = format(subDays(new Date(), 29), "yyyy-MM-dd");
   const today = format(new Date(), "yyyy-MM-dd");
 
-  // Fetch last 30 days of transactions
   const { data: transactions, error } = await supabase
     .from("transactions")
     .select("*")
@@ -34,18 +34,18 @@ export default async function DashboardPage() {
   const txns: Transaction[] = transactions ?? [];
 
   // --- Aggregate stats ---
+  // usdt_amount is null for direct_exchange trades — use ?? 0 to avoid NaN
   const totalNetProfit = txns.reduce((sum, t) => sum + t.net_profit_pkr, 0);
   const totalGrossProfit = txns.reduce((sum, t) => sum + t.gross_profit_pkr, 0);
   const totalFees = txns.reduce((sum, t) => sum + t.total_fees_pkr, 0);
   const totalTry = txns.reduce((sum, t) => sum + t.try_amount, 0);
-  const totalUsdt = txns.reduce((sum, t) => sum + t.usdt_amount, 0);
+  const totalUsdt = txns.reduce((sum, t) => sum + (t.usdt_amount ?? 0), 0);
   const totalPkrReceived = txns.reduce((sum, t) => sum + t.pkr_received, 0);
   const totalTransactions = txns.length;
 
   // --- Build daily summaries for the chart ---
   const dailyMap = new Map<string, DailySummary>();
 
-  // Pre-fill all 30 days with zeroes so chart shows empty days too
   for (let i = 29; i >= 0; i--) {
     const d = format(subDays(new Date(), i), "yyyy-MM-dd");
     dailyMap.set(d, {
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
     if (existing) {
       existing.transaction_count += 1;
       existing.total_try += t.try_amount;
-      existing.total_usdt += t.usdt_amount;
+      existing.total_usdt += t.usdt_amount ?? 0;
       existing.total_pkr_cost += t.pkr_cost;
       existing.total_pkr_received += t.pkr_received;
       existing.total_fees += t.total_fees_pkr;
@@ -77,12 +77,10 @@ export default async function DashboardPage() {
 
   const chartData = Array.from(dailyMap.values());
 
-  // 5 most recent transactions for the table
   const recentTransactions = [...txns]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
-  // Today's profit
   const todayStr = format(startOfDay(new Date()), "yyyy-MM-dd");
   const todayProfit = txns
     .filter((t) => t.date === todayStr)
@@ -98,7 +96,9 @@ export default async function DashboardPage() {
             {format(new Date(), "EEEE, d MMMM yyyy")} &mdash; Today&apos;s profit:{" "}
             <span
               className={
-                todayProfit >= 0 ? "text-green-600 font-medium" : "text-red-600 font-medium"
+                todayProfit >= 0
+                  ? "text-green-600 font-medium"
+                  : "text-red-600 font-medium"
               }
             >
               {todayProfit >= 0 ? "+" : ""}

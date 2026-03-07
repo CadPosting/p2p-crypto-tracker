@@ -1,42 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
-import { TrendingUp, Loader2 } from "lucide-react";
+import { TrendingUp, Loader2, AlertCircle } from "lucide-react";
+import { loginAction } from "./actions";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      toast.success("Logged in successfully!");
-      router.push("/");
-      router.refresh();
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Login failed. Try again.";
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [state, formAction, isPending] = useActionState(loginAction, {
+    error: null,
+  });
 
   return (
     <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg border border-slate-200">
@@ -49,7 +21,15 @@ export default function LoginPage() {
         <p className="text-sm text-slate-500 mt-1">Sign in to your account</p>
       </div>
 
-      <form onSubmit={handleLogin} className="space-y-4">
+      {/* Error message */}
+      {state.error && (
+        <div className="flex items-center gap-2 mb-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {state.error}
+        </div>
+      )}
+
+      <form action={formAction} className="space-y-4">
         <div>
           <label
             htmlFor="email"
@@ -59,9 +39,8 @@ export default function LoginPage() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             required
             placeholder="you@example.com"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -77,9 +56,8 @@ export default function LoginPage() {
           </label>
           <input
             id="password"
+            name="password"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             required
             placeholder="••••••••"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -88,20 +66,17 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={isPending}
           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors"
         >
-          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {loading ? "Signing in..." : "Sign in"}
+          {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isPending ? "Signing in..." : "Sign in"}
         </button>
       </form>
 
       <p className="text-center text-sm text-slate-600 mt-6">
         Don&apos;t have an account?{" "}
-        <Link
-          href="/signup"
-          className="text-blue-600 hover:underline font-medium"
-        >
+        <Link href="/signup" className="text-blue-600 hover:underline font-medium">
           Sign up
         </Link>
       </p>

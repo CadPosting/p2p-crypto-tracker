@@ -1,52 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
-import { TrendingUp, Loader2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { TrendingUp, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { signupAction } from "./actions";
 
-export default function SignupPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
-
-  async function handleSignup(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signUp({ email, password });
-
-      if (error) throw error;
-
-      toast.success(
-        "Account created! Check your email to confirm your account, then sign in."
-      );
-      router.push("/login");
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Sign up failed. Try again.";
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }
+function SignupForm() {
+  const [state, formAction, isPending] = useActionState(signupAction, {
+    error: null,
+  });
+  const searchParams = useSearchParams();
+  const confirmed = searchParams.get("confirmed");
 
   return (
     <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg border border-slate-200">
@@ -61,7 +27,23 @@ export default function SignupPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSignup} className="space-y-4">
+      {/* Success message after sign-up */}
+      {confirmed && (
+        <div className="flex items-center gap-2 mb-4 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+          Account created! Check your email for a confirmation link, then sign in.
+        </div>
+      )}
+
+      {/* Error message */}
+      {state.error && (
+        <div className="flex items-center gap-2 mb-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {state.error}
+        </div>
+      )}
+
+      <form action={formAction} className="space-y-4">
         <div>
           <label
             htmlFor="email"
@@ -71,9 +53,8 @@ export default function SignupPage() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             required
             placeholder="you@example.com"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -89,9 +70,8 @@ export default function SignupPage() {
           </label>
           <input
             id="password"
+            name="password"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             required
             placeholder="Min. 6 characters"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -107,9 +87,8 @@ export default function SignupPage() {
           </label>
           <input
             id="confirmPassword"
+            name="confirmPassword"
             type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
             required
             placeholder="Re-enter your password"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -118,23 +97,29 @@ export default function SignupPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={isPending}
           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors"
         >
-          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {loading ? "Creating account..." : "Create account"}
+          {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isPending ? "Creating account..." : "Create account"}
         </button>
       </form>
 
       <p className="text-center text-sm text-slate-600 mt-6">
         Already have an account?{" "}
-        <Link
-          href="/login"
-          className="text-blue-600 hover:underline font-medium"
-        >
+        <Link href="/login" className="text-blue-600 hover:underline font-medium">
           Sign in
         </Link>
       </p>
     </div>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
   );
 }

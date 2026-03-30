@@ -27,6 +27,9 @@ export async function signupAction(
   });
 
   if (error) {
+    if (error.message.includes("<!DOCTYPE") || error.message.includes("not valid JSON")) {
+      return { error: "Unable to reach the authentication server. Please check your configuration." };
+    }
     return { error: error.message };
   }
 

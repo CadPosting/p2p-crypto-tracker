@@ -30,6 +30,11 @@ export async function loginAction(
   });
 
   if (error) {
+    // A JSON parse error here means the Supabase URL is misconfigured and the
+    // server returned an HTML page instead of JSON. Show a friendlier message.
+    if (error.message.includes("<!DOCTYPE") || error.message.includes("not valid JSON")) {
+      return { error: "Unable to reach the authentication server. Please check your configuration." };
+    }
     return { error: error.message };
   }
 

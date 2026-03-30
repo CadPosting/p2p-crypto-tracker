@@ -10,12 +10,12 @@ import type { Account } from "@/types";
 import { X } from "lucide-react";
 
 const schema = z.object({
-  name: z.string().min(1, "Account name is required"),
+  name: z.string().min(1, "Account name is required").max(100, "Max 100 characters"),
   currency: z.enum(["TRY", "PKR"]),
-  bank_name: z.string().optional(),
-  account_number: z.string().optional(),
+  bank_name: z.string().max(100, "Max 100 characters").optional(),
+  account_number: z.string().max(50, "Max 50 characters").optional(),
   current_balance: z.coerce.number(),
-  notes: z.string().optional(),
+  notes: z.string().max(500, "Max 500 characters").optional(),
 });
 
 type FormValues = z.infer<typeof schema>;

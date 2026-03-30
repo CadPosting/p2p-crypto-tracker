@@ -10,11 +10,11 @@ import type { RateAd } from "@/types";
 import { X } from "lucide-react";
 
 const schema = z.object({
-  ad_name: z.string().min(1, "Ad name is required"),
-  platform: z.string().min(1, "Platform is required"),
-  usdt_try_rate: z.coerce.number().positive("Must be > 0"),
-  usdt_pkr_rate: z.coerce.number().positive("Must be > 0"),
-  notes: z.string().optional(),
+  ad_name: z.string().min(1, "Ad name is required").max(100, "Max 100 characters"),
+  platform: z.string().min(1, "Platform is required").max(50, "Max 50 characters"),
+  usdt_try_rate: z.coerce.number().positive("Must be > 0").max(100_000, "Rate too large"),
+  usdt_pkr_rate: z.coerce.number().positive("Must be > 0").max(100_000, "Rate too large"),
+  notes: z.string().max(500, "Max 500 characters").optional(),
 });
 
 type FormValues = z.infer<typeof schema>;

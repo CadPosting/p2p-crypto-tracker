@@ -21,7 +21,7 @@ import { format } from "date-fns";
 
 const baseFields = {
   date: z.string().min(1, "Date is required"),
-  description: z.string().optional(),
+  description: z.string().max(500, "Max 500 characters").optional(),
   try_amount: z.coerce.number().positive("Must be > 0"),
   pkr_per_try_rate: z.coerce.number().positive("Must be > 0"),
   try_account_id: z.string().optional(),
@@ -29,7 +29,7 @@ const baseFields = {
   status: z.enum(["pending", "completed", "cancelled"]),
   fees: z.array(
     z.object({
-      description: z.string().min(1, "Fee name required"),
+      description: z.string().min(1, "Fee name required").max(100, "Max 100 characters"),
       amount_pkr: z.coerce.number().min(0),
     })
   ),

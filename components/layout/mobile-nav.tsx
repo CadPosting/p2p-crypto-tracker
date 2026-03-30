@@ -12,6 +12,7 @@ import {
   Landmark,
   BarChart3,
   FileText,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/rates", label: "Rate Tracker", icon: BarChart3 },
   { href: "/reports", label: "Reports", icon: FileText },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function MobileNav() {

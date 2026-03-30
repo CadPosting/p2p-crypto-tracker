@@ -11,6 +11,7 @@ import {
   Landmark,
   BarChart3,
   FileText,
+  Settings,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,11 @@ const navItems = [
     href: "/reports",
     label: "Reports",
     icon: FileText,
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: Settings,
   },
 ];
 

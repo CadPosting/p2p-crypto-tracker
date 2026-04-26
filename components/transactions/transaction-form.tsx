@@ -207,6 +207,16 @@ export function TransactionForm() {
   });
 
   const watched = useWatch({ control });
+  // Cast to a flat optional type so mode-specific fields are accessible without narrowing
+  const w = watched as Partial<{
+    pkr_amount: number;
+    pkr_per_try_rate: number;
+    try_amount: number;
+    try_per_usdt_rate: number;
+    usdt_amount: number;
+    pkr_per_usdt_rate: number;
+    fees: Array<{ description?: string; amount_pkr?: number }>;
+  }>;
 
   const { fields: feeFields, append: addFee, remove: removeFee } = useFieldArray({
     control,
@@ -250,11 +260,11 @@ export function TransactionForm() {
 
   // Live FIFO cost-basis estimate (for sell types)
   const sellAmount = useMemo(() => {
-    if (mode === "try_to_pkr") return Number(watched.try_amount) || 0;
-    if (mode === "try_to_usdt") return Number(watched.try_amount) || 0;
-    if (mode === "usdt_to_pkr") return Number(watched.usdt_amount) || 0;
+    if (mode === "try_to_pkr") return Number(w.try_amount) || 0;
+    if (mode === "try_to_usdt") return Number(w.try_amount) || 0;
+    if (mode === "usdt_to_pkr") return Number(w.usdt_amount) || 0;
     return 0;
-  }, [mode, watched.try_amount, watched.usdt_amount]);
+  }, [mode, w.try_amount, w.usdt_amount]);
 
   useEffect(() => {
     if (mode === "pkr_to_try" || sellAmount <= 0) {
@@ -299,18 +309,18 @@ export function TransactionForm() {
   const totalFees = useMemo(
     () =>
       sumFees(
-        (watched.fees ?? []).map((f) => ({
+        (w.fees ?? []).map((f) => ({
           amount_pkr: Number(f?.amount_pkr) || 0,
         }))
       ),
-    [watched.fees]
+    [w.fees]
   );
 
   const calcSummary = useMemo(() => {
     if (mode === "pkr_to_try") {
       const c = calculatePkrToTry(
-        Number(watched.pkr_amount) || 0,
-        Number(watched.pkr_per_try_rate) || 0
+        Number(w.pkr_amount) || 0,
+        Number(w.pkr_per_try_rate) || 0
       );
       return {
         outAmount: c.tryAmount,
@@ -327,8 +337,8 @@ export function TransactionForm() {
     if (mode === "try_to_pkr") {
       const cost = fifoEstimate?.costBasisPkr ?? 0;
       const c = calculateTryToPkr(
-        Number(watched.try_amount) || 0,
-        Number(watched.pkr_per_try_rate) || 0,
+        Number(w.try_amount) || 0,
+        Number(w.pkr_per_try_rate) || 0,
         cost,
         totalFees
       );
@@ -347,8 +357,8 @@ export function TransactionForm() {
     if (mode === "try_to_usdt") {
       const cost = fifoEstimate?.costBasisPkr ?? 0;
       const c = calculateTryToUsdt(
-        Number(watched.try_amount) || 0,
-        Number(watched.try_per_usdt_rate) || 0,
+        Number(w.try_amount) || 0,
+        Number(w.try_per_usdt_rate) || 0,
         cost
       );
       return {
@@ -367,8 +377,8 @@ export function TransactionForm() {
     // usdt_to_pkr
     const cost = fifoEstimate?.costBasisPkr ?? 0;
     const c = calculateUsdtToPkr(
-      Number(watched.usdt_amount) || 0,
-      Number(watched.pkr_per_usdt_rate) || 0,
+      Number(w.usdt_amount) || 0,
+      Number(w.pkr_per_usdt_rate) || 0,
       cost,
       totalFees
     );
@@ -383,7 +393,7 @@ export function TransactionForm() {
       grossProfit: c.grossProfit,
       netProfit: c.netProfit,
     };
-  }, [mode, watched, fifoEstimate, totalFees]);
+  }, [mode, w, fifoEstimate, totalFees]);
 
   // ---------- Mode switch ----------
   const switchMode = useCallback(

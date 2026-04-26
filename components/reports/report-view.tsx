@@ -6,7 +6,7 @@ import { format, subDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { Download, FileText } from "lucide-react";
 import type { Transaction, ReportSummary } from "@/types";
 import { formatCurrency, formatNumber, profitClass } from "@/lib/utils";
-import { exportTransactionsToExcel, exportReportSummaryToExcel } from "@/lib/export";
+import { exportTransactionsToExcel, exportDailySummaryToExcel } from "@/lib/export";
 
 type GroupBy = "day" | "month";
 
@@ -187,7 +187,7 @@ export function ReportView() {
           <div className="flex gap-2 sm:ml-auto">
             <button
               onClick={() =>
-                exportReportSummaryToExcel(
+                exportDailySummaryToExcel(
                   summary,
                   `report-${dateFrom}-to-${dateTo}.xlsx`
                 )

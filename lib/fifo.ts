@@ -28,9 +28,7 @@ export interface FifoResult {
 // Maps each sell type to the corresponding buy type it consumes
 export function getBuyTypeForSell(sellType: SellTransactionType): BuyTransactionType {
   if (sellType === "try_to_pkr") return "pkr_to_try";
-  if (sellType === "try_to_usdt") return "pkr_to_try";
   if (sellType === "usdt_to_pkr") return "try_to_usdt";
-  // Should never reach here
   throw new Error(`Unknown sell type: ${sellType}`);
 }
 

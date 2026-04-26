@@ -2,7 +2,7 @@
 
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
-import type { Transaction, DailySummary } from "@/types";
+import type { Transaction, ReportSummary } from "@/types";
 
 /**
  * Export a list of transactions to an Excel (.xlsx) file.
@@ -41,7 +41,7 @@ export function exportTransactionsToExcel(
  * Export the daily summary report to Excel.
  */
 export function exportDailySummaryToExcel(
-  summaries: DailySummary[],
+  summaries: ReportSummary[],
   filename?: string
 ) {
   const rows = summaries.map((s) => ({

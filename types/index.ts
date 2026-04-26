@@ -202,6 +202,7 @@ export interface InventoryPosition {
 
 // ============================================================
 // DailySummary — aggregated from sell transactions per day
+// (used in dashboard chart and positions P&L view)
 // ============================================================
 export interface DailySummary {
   date: string;
@@ -210,6 +211,22 @@ export interface DailySummary {
   total_usdt_sold: number;
   total_pkr_received: number;
   total_pkr_cost: number;
+  total_fees: number;
+  total_gross_profit: number;
+  total_net_profit: number;
+}
+
+// ============================================================
+// ReportSummary — aggregated from ALL transactions per period
+// (used in the Reports page; groups by day or month)
+// ============================================================
+export interface ReportSummary {
+  date: string;           // "yyyy-MM-dd" (day) or "yyyy-MM" (month)
+  transaction_count: number;
+  total_try: number;
+  total_usdt: number;
+  total_pkr_cost: number;
+  total_pkr_received: number;
   total_fees: number;
   total_gross_profit: number;
   total_net_profit: number;

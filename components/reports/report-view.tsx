@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { format, subDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { Download, FileText } from "lucide-react";
-import type { Transaction, DailySummary } from "@/types";
+import type { Transaction, ReportSummary } from "@/types";
 import { formatCurrency, formatNumber, profitClass } from "@/lib/utils";
-import { exportTransactionsToExcel, exportDailySummaryToExcel } from "@/lib/export";
+import { exportTransactionsToExcel, exportReportSummaryToExcel } from "@/lib/export";
 
 type GroupBy = "day" | "month";
 
@@ -62,8 +62,8 @@ export function ReportView() {
   }
 
   // Aggregate by day or month
-  const summary: DailySummary[] = (() => {
-    const map = new Map<string, DailySummary>();
+  const summary: ReportSummary[] = (() => {
+    const map = new Map<string, ReportSummary>();
 
     for (const t of transactions) {
       const key =
@@ -187,7 +187,7 @@ export function ReportView() {
           <div className="flex gap-2 sm:ml-auto">
             <button
               onClick={() =>
-                exportDailySummaryToExcel(
+                exportReportSummaryToExcel(
                   summary,
                   `report-${dateFrom}-to-${dateTo}.xlsx`
                 )

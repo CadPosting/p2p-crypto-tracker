@@ -282,7 +282,9 @@ export function TransactionTable({ transactions, onDelete }: TransactionTablePro
                       <div className="flex items-center gap-1">
                         {t.description && <span className="truncate">{t.description}</span>}
                         {t.attachments && t.attachments.length > 0 && (
-                          <Paperclip className="w-3 h-3 text-slate-400 flex-shrink-0" title={`${t.attachments.length} attachment(s)`} />
+                          <span title={`${t.attachments.length} attachment(s)`}>
+                            <Paperclip className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                          </span>
                         )}
                       </div>
                     </td>

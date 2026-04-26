@@ -7,54 +7,72 @@ import type { DailySummary, Transaction } from "@/types";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
-/**
- * Main dashboard page — server component that fetches data from Supabase.
- * Shows stats, profit chart, and recent transactions.
- *
- * Note: createClient() is async in Next.js 15+ because cookies() is async.
- */
 export default async function DashboardPage() {
   const supabase = await createClient();
 
   const thirtyDaysAgo = format(subDays(new Date(), 29), "yyyy-MM-dd");
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const { data: transactions, error } = await supabase
+  // Fetch sell transactions only (profit is realised on sells)
+  const { data: sellTxns } = await supabase
     .from("transactions")
     .select("*")
+    .in("transaction_type", ["try_to_pkr", "usdt_to_pkr"])
+    .eq("is_archived", false)
+    .eq("status", "completed")
     .gte("date", thirtyDaysAgo)
     .lte("date", today)
-    .eq("status", "completed")
     .order("date", { ascending: true });
 
-  if (error) {
-    console.error("Error fetching transactions:", error);
-  }
+  // Fetch buy transactions to show open inventory
+  const { data: openBuys } = await supabase
+    .from("transactions")
+    .select("remaining_amount, transaction_type")
+    .in("transaction_type", ["pkr_to_try", "try_to_usdt"])
+    .eq("is_archived", false)
+    .gt("remaining_amount", 0);
 
-  const txns: Transaction[] = transactions ?? [];
+  // Fetch recent transactions (all non-archived types, last 5)
+  const { data: recentAll } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("is_archived", false)
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(5);
 
-  // --- Aggregate stats ---
-  // usdt_amount is null for direct_exchange trades — use ?? 0 to avoid NaN
-  const totalNetProfit = txns.reduce((sum, t) => sum + t.net_profit_pkr, 0);
-  const totalGrossProfit = txns.reduce((sum, t) => sum + t.gross_profit_pkr, 0);
-  const totalFees = txns.reduce((sum, t) => sum + t.total_fees_pkr, 0);
-  const totalTry = txns.reduce((sum, t) => sum + t.try_amount, 0);
-  const totalUsdt = txns.reduce((sum, t) => sum + (t.usdt_amount ?? 0), 0);
-  const totalPkrReceived = txns.reduce((sum, t) => sum + t.pkr_received, 0);
-  const totalTransactions = txns.length;
+  const txns: Transaction[] = sellTxns ?? [];
+  const recent: Transaction[] = recentAll ?? [];
 
-  // --- Build daily summaries for the chart ---
+  // Aggregate sell stats
+  const totalNetProfit   = txns.reduce((s, t) => s + (t.net_profit_pkr ?? 0), 0);
+  const totalGrossProfit = txns.reduce((s, t) => s + (t.gross_profit_pkr ?? 0), 0);
+  const totalFees        = txns.reduce((s, t) => s + t.total_fees_pkr, 0);
+  const totalTrySold     = txns.filter((t) => t.transaction_type === "try_to_pkr")
+    .reduce((s, t) => s + (t.try_amount ?? 0), 0);
+  const totalUsdtSold    = txns.filter((t) => t.transaction_type === "usdt_to_pkr")
+    .reduce((s, t) => s + (t.usdt_amount ?? 0), 0);
+  const totalPkrReceived = txns.reduce((s, t) => s + (t.pkr_received ?? 0), 0);
+
+  // Open inventory
+  const openTry = (openBuys ?? [])
+    .filter((r) => r.transaction_type === "pkr_to_try")
+    .reduce((s, r) => s + (r.remaining_amount ?? 0), 0);
+  const openUsdt = (openBuys ?? [])
+    .filter((r) => r.transaction_type === "try_to_usdt")
+    .reduce((s, r) => s + (r.remaining_amount ?? 0), 0);
+
+  // Build 30-day chart data (sell transactions only)
   const dailyMap = new Map<string, DailySummary>();
-
   for (let i = 29; i >= 0; i--) {
     const d = format(subDays(new Date(), i), "yyyy-MM-dd");
     dailyMap.set(d, {
       date: d,
-      transaction_count: 0,
-      total_try: 0,
-      total_usdt: 0,
-      total_pkr_cost: 0,
+      sell_count: 0,
+      total_try_sold: 0,
+      total_usdt_sold: 0,
       total_pkr_received: 0,
+      total_pkr_cost: 0,
       total_fees: 0,
       total_gross_profit: 0,
       total_net_profit: 0,
@@ -62,45 +80,35 @@ export default async function DashboardPage() {
   }
 
   for (const t of txns) {
-    const existing = dailyMap.get(t.date);
-    if (existing) {
-      existing.transaction_count += 1;
-      existing.total_try += t.try_amount;
-      existing.total_usdt += t.usdt_amount ?? 0;
-      existing.total_pkr_cost += t.pkr_cost;
-      existing.total_pkr_received += t.pkr_received;
-      existing.total_fees += t.total_fees_pkr;
-      existing.total_gross_profit += t.gross_profit_pkr;
-      existing.total_net_profit += t.net_profit_pkr;
+    const entry = dailyMap.get(t.date);
+    if (entry) {
+      entry.sell_count         += 1;
+      entry.total_try_sold     += t.transaction_type === "try_to_pkr" ? (t.try_amount ?? 0) : 0;
+      entry.total_usdt_sold    += t.transaction_type === "usdt_to_pkr" ? (t.usdt_amount ?? 0) : 0;
+      entry.total_pkr_received += (t.pkr_received ?? 0);
+      entry.total_pkr_cost     += (t.pkr_cost ?? 0);
+      entry.total_fees         += t.total_fees_pkr;
+      entry.total_gross_profit += (t.gross_profit_pkr ?? 0);
+      entry.total_net_profit   += (t.net_profit_pkr ?? 0);
     }
   }
 
   const chartData = Array.from(dailyMap.values());
 
-  const recentTransactions = [...txns]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
-
   const todayStr = format(startOfDay(new Date()), "yyyy-MM-dd");
   const todayProfit = txns
     .filter((t) => t.date === todayStr)
-    .reduce((sum, t) => sum + t.net_profit_pkr, 0);
+    .reduce((s, t) => s + (t.net_profit_pkr ?? 0), 0);
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Dashboard</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {format(new Date(), "EEEE, d MMMM yyyy")} &mdash; Today&apos;s profit:{" "}
-            <span
-              className={
-                todayProfit >= 0
-                  ? "text-green-600 font-medium"
-                  : "text-red-600 font-medium"
-              }
-            >
+            <span className={todayProfit >= 0 ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
               {todayProfit >= 0 ? "+" : ""}
               {new Intl.NumberFormat("en-US").format(Math.round(todayProfit))} PKR
             </span>
@@ -118,43 +126,43 @@ export default async function DashboardPage() {
       {/* Stats cards */}
       <StatsCards
         totalNetProfit={totalNetProfit}
-        totalTransactions={totalTransactions}
-        totalTry={totalTry}
-        totalUsdt={totalUsdt}
+        totalTransactions={txns.length}
+        totalTry={totalTrySold}
+        totalUsdt={totalUsdtSold}
         totalPkrReceived={totalPkrReceived}
-        periodLabel="Last 30 days"
+        periodLabel="Last 30 days (sells)"
       />
 
-      {/* Profit chart + recent transactions */}
+      {/* Chart + recent */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         <div className="xl:col-span-3">
           <ProfitChart data={chartData} />
         </div>
         <div className="xl:col-span-2">
-          <RecentTransactions transactions={recentTransactions} />
+          <RecentTransactions transactions={recent} />
         </div>
       </div>
 
       {/* Summary strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Gross Profit", value: totalGrossProfit, currency: "PKR" },
-          { label: "Total Fees", value: totalFees, currency: "PKR" },
-          { label: "TRY Traded", value: totalTry, currency: "TRY", decimals: 0 },
-          { label: "USDT Traded", value: totalUsdt, currency: "USDT" },
+          { label: "Gross Profit",   value: totalGrossProfit, unit: "PKR",  decimals: 0 },
+          { label: "Total Fees",     value: totalFees,        unit: "PKR",  decimals: 0 },
+          { label: "Open TRY",       value: openTry,          unit: "TRY",  decimals: 0 },
+          { label: "Open USDT",      value: openUsdt,         unit: "USDT", decimals: 4 },
         ].map((item) => (
           <div
             key={item.label}
-            className="bg-white rounded-xl border border-slate-200 p-4 text-center"
+            className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center"
           >
-            <p className="text-xs text-slate-500">{item.label}</p>
-            <p className="text-lg font-bold text-slate-800 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{item.label}</p>
+            <p className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-1">
               {new Intl.NumberFormat("en-US", {
-                minimumFractionDigits: item.decimals ?? 2,
-                maximumFractionDigits: item.decimals ?? 2,
+                minimumFractionDigits: item.decimals,
+                maximumFractionDigits: item.decimals,
               }).format(item.value)}
             </p>
-            <p className="text-xs text-slate-400">{item.currency}</p>
+            <p className="text-xs text-slate-400">{item.unit}</p>
           </div>
         ))}
       </div>

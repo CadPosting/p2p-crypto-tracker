@@ -13,40 +13,18 @@ import {
   FileText,
   Settings,
   LogOut,
+  PieChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  {
-    href: "/",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/transactions",
-    label: "Transactions",
-    icon: ArrowLeftRight,
-  },
-  {
-    href: "/accounts",
-    label: "Accounts",
-    icon: Landmark,
-  },
-  {
-    href: "/rates",
-    label: "Rate Tracker",
-    icon: BarChart3,
-  },
-  {
-    href: "/reports",
-    label: "Reports",
-    icon: FileText,
-  },
-  {
-    href: "/settings",
-    label: "Settings",
-    icon: Settings,
-  },
+  { href: "/",             label: "Dashboard",      icon: LayoutDashboard },
+  { href: "/transactions", label: "Transactions",   icon: ArrowLeftRight  },
+  { href: "/positions",    label: "Positions & P&L", icon: PieChart        },
+  { href: "/accounts",     label: "Accounts",       icon: Landmark        },
+  { href: "/rates",        label: "Rate Tracker",   icon: BarChart3       },
+  { href: "/reports",      label: "Reports",        icon: FileText        },
+  { href: "/settings",     label: "Settings",       icon: Settings        },
 ];
 
 export function Sidebar() {
